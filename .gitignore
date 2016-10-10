@@ -1,3 +1,10 @@
+# Bin folder
+/bin
+!/bin/.gitkeep
+
+# vim temporary files
+*~
+
 # Object files
 *.o
 *.ko
