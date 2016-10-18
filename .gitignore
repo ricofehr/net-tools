@@ -1,5 +1,5 @@
 # Bin folder
-/bin
+/bin/*
 !/bin/.gitkeep
 
 # vim temporary files
