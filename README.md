@@ -41,6 +41,9 @@ PING 192.168.1.1 (192.168.1.1) 56(84) bytes of data.
 8 bytes from 192.168.1.1: icmp_seq=7 ttl=63
 8 bytes from 192.168.1.1: icmp_seq=8 ttl=63
 8 bytes from 192.168.1.1: icmp_seq=9 ttl=63
+^C
+--- ping statistics ---
+9 packets transmitted, 9 packets received, 0 packet loss
 ```
 
 Spoofing example (src: 192.168.1.15, dest: 192.168.1.1, port: 23)
@@ -50,7 +53,6 @@ $ sudo ./bin/./spoofing 192.168.1.15 192.168.1.1 23
 
 ## Todo
 
-- Manage signals on ping program and display some statistics before exit
 - Accept hostname for ping
 - More verbose for spoofing
 - Add other tools

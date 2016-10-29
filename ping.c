@@ -16,10 +16,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #define BUFSIZE 1500
 int sockfd = 0;
 uint16_t loop = 1;
+uint16_t succ = 0;
+uint16_t fail = 0;
 
 void open_socket();
 void init_iphdr(struct iphdr *ip, char *dest, int len);
@@ -179,14 +182,14 @@ void ping_recv(char *dest)
 	memset(&read_set, 0, sizeof read_set);
         FD_SET(sockfd, &read_set);
 
-        //wait for a reply with a timeout
+        /* wait for a reply with a timeout */
         rc = select(sockfd + 1, &read_set, NULL, NULL, &timeout);
         if (rc == 0) {
-	    printf("No reply icmp_seq=%d Destination Host Unreachable\n", loop);
-            return;
+		printf("No reply icmp_seq=%d Destination Host Unreachable\n", loop);
+		return;
         } else if (rc < 0) {
-            perror("Select");
-            exit(1);
+		perror("Select");
+		exit(1);
         }
 
 	iov.iov_base = recvbuf;
@@ -202,11 +205,26 @@ void ping_recv(char *dest)
 	buf = msg.msg_iov->iov_base;
 	iphdr = (struct iphdr*)buf;
 	icmphdr = (struct icmphdr*)(buf + (iphdr->ihl*4));
-	if (icmphdr->type == ICMP_ECHOREPLY)
+	if (icmphdr->type == ICMP_ECHOREPLY) {
 		printf("%d bytes from %s: icmp_seq=%d ttl=%d\n",
-		        sizeof(icmphdr), dest, loop, iphdr->ttl, 14.5f);
-	if (icmphdr->type == ICMP_DEST_UNREACH)
+		        (int)sizeof(icmphdr), dest, loop, (int)iphdr->ttl);
+		++succ;
+	}
+
+	if (icmphdr->type == ICMP_DEST_UNREACH) {
 		printf("From 0.0.0.0 icmp_seq=%d Destination Host Unreachable\n", loop);
+		++fail;
+	}
+}
+
+/*
+*	ping_end - stop signals handler
+*/
+static void ping_end(int sig, siginfo_t *siginfo, void *context)
+{
+	printf("\n--- ping statistics ---\n");
+	printf("%d packets transmitted, %d packets received, %d packet loss\n", loop, succ, fail);
+	exit(0);
 }
 
 int main(int argc, char **argv)
@@ -218,7 +236,26 @@ int main(int argc, char **argv)
 	struct sockaddr_in target;
 	struct in_addr in;
 	int dlen = 56, pck_len;
+	struct sigaction act;
 
+ 	/* init sigaction object */
+ 	memset (&act, '\0', sizeof(act));
+
+	/* Use the sa_sigaction field */
+	act.sa_sigaction = &ping_end;
+
+	/* The SA_SIGINFO flag tells sigaction() to use the sa_sigaction field */
+	act.sa_flags = SA_SIGINFO;
+	if (sigaction(SIGINT, &act, NULL) < 0) {
+		perror ("sigaction SIGINT failed to handled");
+		return 1;
+	}
+
+	if (sigaction(SIGTSTP, &act, NULL) < 0) {
+		perror ("sigaction SIGTSTP failed to handled");
+		return 1;
+	}
+	
 	if (argc != 2) {
 		printf("usage: %s dest\n", argv[0]);
 		return 1;
